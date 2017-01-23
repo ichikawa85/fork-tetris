@@ -1,5 +1,4 @@
-#include "udp_server.h"
-#include "udp_client.h"
+#include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
@@ -52,7 +51,6 @@ void my_turn_right(void);
 void my_turn_left(void);
 void my_clear_field(void);
 void my_timer(void);
-int tetris(void);
 /*My関数プロとタイプ宣言*/
 //static int game_server(int);
 
@@ -117,36 +115,51 @@ int turn_point;
 int score;
 int lv;
 
-int          sock ;
-int          slen,scount;
-char         sbuf[BUFFERSIZE];
-int          i ;
-struct sockaddr_in to;
-
-void game_server( char *server, int portno, int nstr){
-  
-  sock = udp_port_nobind();
-  if( sock<0 )
-    exit( -1 );
-  printf("my port is "); sockname_print( sock );
-  
-  if( sockaddr_in_init( &to, server, portno )<0 )
-    {
-      perror("sockaddr_in_init");
-      exit( -1 );
+void game_server()
+{
+  struct sockaddr_in client;
+  socklen_t len = sizeof(client);
+  int client_sock = accept(s1, (struct sockaddr *)&client, &len);
+  if(client_sock != 0){
+    int j = 0;
+    while(j < FD_SETSIZE && accept_list[j] != 0) j++;
+    if(j != FD_SETSIZE){
+      FD_SET(client_sock, &readfds);
+      accept_list[j] = client_sock;
+      printf("accept\n");
+    }else{
+      printf("no empty\n");
     }
-  sockaddr_in_print( &to );
-  tetris();
+  }else{
+    printf("accept error\n");
+  }
 }
 
 /*TETRIS*/
-int tetris(){
+int tetris(int socket){
+  if(socket > 0) close(socket); /* when forked game, closed previous socket */
+  
   my_init_var();
   my_init_field();
   my_draw_field();
   //  my_op_scene();
+
+  FD_ZERO(&readfds);
+  FD_SET(s1, &readfds);
   
   while(1){
+    strcpy(read_buf, "");
+    memcpy(&fds, &readfds, sizeof(fd_set));
+    select_ret = select(s1+accept_list[0]+1, &fds, NULL, NULL, &t_val);
+    if(select_ret != 0){
+      if(FD_ISSET(s1, &fds)){
+	game_server();
+      }
+      if(FD_ISSET(accept_list[0], &fds)){
+      	read(accept_list[0],read_buf,BUFSIZ);
+      }
+    }
+    
     if(gameover_flag == 0){
       my_make_block();
       my_gameover();
@@ -198,8 +211,17 @@ void my_op_scene(){
   int any_key;
 
   printf("TETRIS\n");
+  strcpy(buf, "TETRIS\n");
+  if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
   printf("press any key to start");
-    
+  strcpy(buf, "press any key to start");
+  if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
+  
+  /* FD_ZERO(&readfds); */
+  /* FD_SET(accept_list[0], &readfds); */
+  /* memcpy(&fds, &readfds, sizeof(fd_set)); */
+  /* select(accept_list[0]+1, &fds, NULL, NULL, NULL); */
+  
   any_key = getch();
   if(any_key == 0 || any_key == 224)any_key = getch();
 }	
@@ -547,65 +569,66 @@ void my_save_field(){
 /*後半部分スコアボード表示*/
 /*文字コード65(A)以上が来たら文字コードとして「%c」で表示*/
 void my_draw_field(){
+  char field = "";
   int i,j;
   system("clear");
   for(i=0;i<FIELD_HEIGHT-2;i++){
     for(j=2;j<14;j++){
       if(field[i][j] == 9){
-	printf("■ ");
+	//printf("■ ");
 	sprintf(str1,"■ ");
 	strcpy(buf, str1);
-	if(sock>0) sendto( sock, buf, sizeof(buf), 0, (struct sockaddr *)&to, sizeof(to) );
+	if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
       }else if(field[i][j] == 1){
-	printf("□ ");
+	//printf("□ ");
 	sprintf(str1,"□ ");
 	strcpy(buf, str1);
-	if(sock>0)sendto( sock, buf, sizeof(buf), 0, (struct sockaddr *)&to, sizeof(to) );
+	if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
       }else if(field[i][j] == 2){
-	printf("■ ");
+	//printf("■ ");
 	sprintf(str1,"■ ");
 	strcpy(buf, str1);
-	if(sock>0)sendto( sock, buf, sizeof(buf), 0, (struct sockaddr *)&to, sizeof(to) );
+	if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
       }else{
-	printf("  ");
+	//printf("  ");
 	sprintf(str1,"  ");
 	strcpy(buf, str1);
-	if(sock>0)sendto( sock, buf, sizeof(buf), 0, (struct sockaddr *)&to, sizeof(to) );
+	if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
       }
     }
     for(j=16;j<21;j++){
       if(field[i][j] >= 65){
-	printf(" %c",field[i][j]);
+	//printf(" %c",field[i][j]);
 	sprintf(str1," %c", field[i][j]);
 	strcpy(buf, str1);
-	if(sock>0)sendto( sock, buf, sizeof(buf), 0, (struct sockaddr *)&to, sizeof(to) );
+	if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
       }else if(field[i][j] < 10){
-	printf(" %d",field[i][j]);
+	//printf(" %d",field[i][j]);
 	sprintf(str1," %d", field[i][j]);
 	strcpy(buf, str1);
-	if(sock>0)sendto( sock, buf, sizeof(buf), 0, (struct sockaddr *)&to, sizeof(to) );
+	if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
       }else if(field[i][j] == 19){
-	printf("■ ");
+	//printf("■ ");
 	sprintf(str1,"■ ");
 	strcpy(buf, str1);
-	if(sock>0)sendto( sock, buf, sizeof(buf), 0, (struct sockaddr *)&to, sizeof(to) );
+	if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
       }else if(field[i][j] == 11){
-	printf("□ ");
+	//printf("□ ");
 	sprintf(str1,"□ ");
 	strcpy(buf, str1);
-	if(sock>0)sendto( sock, buf, sizeof(buf), 0, (struct sockaddr *)&to, sizeof(to) );
+	if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
       }
       else{
-	printf("  ");
+	//printf("  ");
 	sprintf(str1,"  ");
 	strcpy(buf, str1);
-	if(sock>0)sendto( sock, buf, sizeof(buf), 0, (struct sockaddr *)&to, sizeof(to) );
+	if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
       }
     }
-    printf("\n");
+    //printf("\n");
     sprintf(str1,"\n");
     strcpy(buf, str1);
-    if(sock>0)sendto( sock, buf, sizeof(buf), 0, (struct sockaddr *)&to, sizeof(to) );
+    if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
   }
 }
 
@@ -717,16 +740,17 @@ void my_timer(){
 
 int main(int argc,char *argv[])
 {
-  char *server ;
-  int portno ;
-  if( argc < 2 )
-    {
-      fprintf( stdout,"Usage: %s host port str1 ...\n",argv[0] );
-      exit( -1 );
-    }
-  server = argv[1] ;
-  portno = atoi( argv[2] );
-  game_server( server, portno, argc-3);
+  int port = PORT_NO;
+
+  if( argc<2 ) {
+    port = PORT_NO;
+  } else {
+    port = atoi(argv[1]);
+  }
+  printf("port no. = %d\n", port);
+  s1 = server_socket_procedure(port);
+  
+  tetris(-1);
 
   return 0;
 }

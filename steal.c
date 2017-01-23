@@ -118,7 +118,6 @@ int lv;
 
 void game_server()
 {
-  pid_t current_pid;
   struct sockaddr_in client;
   socklen_t len = sizeof(client);
   int client_sock = accept(s1, (struct sockaddr *)&client, &len);
@@ -128,7 +127,6 @@ void game_server()
     if(j != FD_SETSIZE){
       FD_SET(client_sock, &readfds);
       accept_list[j] = client_sock;
-
       printf("accept\n");
     }else{
       printf("no empty\n");
@@ -145,8 +143,7 @@ int tetris(int socket){
   my_init_var();
   my_init_field();
   my_draw_field();
-  //  my_op_scene();
-
+  //my_op_scene();
   FD_ZERO(&readfds);
   FD_SET(s1, &readfds);
   
@@ -158,11 +155,10 @@ int tetris(int socket){
       if(FD_ISSET(s1, &fds)){
 	game_server();
       }
-      if(FD_ISSET(accept_list[0], &fds)){
-      	read(accept_list[0],read_buf,BUFSIZ);
-      }
+      /* if(FD_ISSET(accept_list[0], &fds)){ */
+      /* 	read(accept_list[0],read_buf,BUFSIZ); */
+      /* } */
     }
-    
     if(gameover_flag == 0){
       my_make_block();
       my_gameover();
@@ -178,7 +174,7 @@ int tetris(int socket){
       printf("gameover\n");
       break;
     }
-    fall++;
+    /* fall++; */
   }
   return 0;
 }
@@ -345,7 +341,7 @@ void my_get_key(char *key, int sock){
   /*   } else if(pid==0) { */
   /*     //tetris(sock); //fork at new port */
   /*   } */
-  /*   break; */
+  /*   break;     */
   case 0x48:
     my_turn_right();
     break;
@@ -579,7 +575,7 @@ void my_draw_field(){
   char *back = "\n";
   
   int i,j;
-  //  system("clear");
+  system("clear");
   for(i=0;i<FIELD_HEIGHT-2;i++){
     for(j=2;j<14;j++){
       if(field[i][j] == 9){
@@ -661,8 +657,8 @@ void my_draw_field(){
     /* if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf)); */
   }
   strcpy(buf, field_char);
-  if(accept_list[0]>0)write(accept_list[0], buf, sizeof(buf));
-  printf("%s\n", field_char);
+  if(accept_list[0]>0)write(accept_list[0], "", sizeof(buf));
+  //printf("%s\n", field_char);
 }
 
 /*右回転*/
