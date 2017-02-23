@@ -1,0 +1,15 @@
+* How to use?
+  #+BEGIN_SRC sh
+    $ tetris <PORT1>
+    $ proxy_server <PORT1> <IP_ADDRESS> <PORT2> <PID_OF_GET_SOCKET>
+    $ cloud_client <PORT2>
+  #+END_SRC
+* Enviroment
+  | gcc | 4.8 |
+  | Ruby | 2.3.1 |
+* Complie
+  #+BEGIN_SRC sh
+    $ gcc -Wall -o tetris tetris.c common.c acl.c -lwrap
+    $ gcc -Wall -o proxy_server proxy_server.c common.c acl.c -lwrap
+    $ gcc -Wall -o cloud_client cloud_client.c common.c acl.c -lwrap
+  #+END_SRC

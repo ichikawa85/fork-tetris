@@ -157,11 +157,11 @@ static int proxy_server(int server_port,char* server ,int client_port, int steal
     if(strcmp("102", buf) == 0 && fork_flag == 1){
       fork_flag = 0;
       printf("fork\n");
-      calc_time("*********start************");
+      //calc_time("*********start************");
       int target_pid = -1, ret_pid = -1;
-      char cmd[256], buff[1024];
-      calc_time("request_fork");
-      /************   request fork  *********/
+      char cmd[256], buff[1024], buff2[1024];
+      calc_time("find_pid");
+      /************   ruby program find pid  *********/
       sprintf(cmd, "/home/ichikawa/.rbenv/shims/ruby find.rb %d", 0);
       FILE *fp = popen(cmd, "r");
       while (fgets(buff, sizeof(buff), fp)) {
@@ -169,6 +169,8 @@ static int proxy_server(int server_port,char* server ,int client_port, int steal
       }
       pclose(fp);
       target_pid = atoi(buff);
+      calc_time("request_fork");
+      /************   request fork  *********/
       syscall(SYS_REQUEST_FORK, target_pid);  //fork_request to kernel
       
       printf("get new socket\n");
@@ -179,6 +181,7 @@ static int proxy_server(int server_port,char* server ,int client_port, int steal
       table[0].client[1] = 0;
       table[fork_num].server = s[fork_num];
       printf("s[%d], table[%d].client[0]=%d\n", fork_num, fork_num, table[fork_num].client[0]);
+      fork_num++;
       
       printf("switch fd\n");
       //read(table[fork_num].server, game_buf,BUFSIZ);
@@ -187,18 +190,17 @@ static int proxy_server(int server_port,char* server ,int client_port, int steal
       /**** switch fd ***/
       sprintf(cmd, "/home/ichikawa/.rbenv/shims/ruby find.rb %d", 1);
       FILE *fp2 = popen(cmd, "r");
-      while (fgets(buff, sizeof(buff), fp2)) {
-	printf("fgets: %s", buff);
+      while (fgets(buff2, sizeof(buff2), fp2)) {
+	printf("fgets: %s", buff2);
       }
       printf("read ok\n");
       pclose(fp2);
-      ret_pid = atoi(buff);
+      ret_pid = atoi(buff2);
       syscall(SYS_SWITCH_FD, ret_pid, steal_pid);  //switch old and new fd
 
       /* printf("kill start\n"); */
       /* sprintf(cmd, "kill -9  %d", steal_pid); */
       /* system(cmd); */
-      fork_num++;
       printf("end\n");
       calc_time("**********end************");
     } //strcmp
